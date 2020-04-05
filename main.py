@@ -54,6 +54,6 @@ def patient(patient_name: PatientName):
 @app.get('/patient/{pk}')
 def get_patient(pk: int):
     if pk not in patients:
-        raise HTTPException(status_code=404, detail="Nonexisting patient ID")
+        raise HTTPException(status_code=204, detail="Nonexisting patient ID")
     return patients[pk]
 
