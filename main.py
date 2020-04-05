@@ -1,8 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI()
 
+patients = {}
 
 class MethodResp(BaseModel):
     method: str
@@ -45,8 +46,14 @@ def method_put():
 
 @app.post('/patient')
 def patient(patient_name: PatientName):
-    patient.ctr += 1
-    return PatientResp(id=patient.ctr, patient=patient_name)
+    new_id = len(patients)
+    patients[new_id] = patient_name
+    return PatientResp(id=new_id, patient=patient_name)
 
 
-patient.ctr = -1
+@app.get('/patient/{pk}')
+def get_patient(pk: int):
+    if pk not in patients:
+        raise HTTPException(status_code=404, detail="Nonexisting patient ID")
+    return patients[pk]
+
