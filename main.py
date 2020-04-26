@@ -1,13 +1,17 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Cookie
+from fastapi import FastAPI, HTTPException, status, Depends, Cookie, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
+from fastapi.templating import Jinja2Templates
 
 from hashlib import sha256
 import secrets
 
 app = FastAPI()
 app.secret_key = "Lorem Ipsum Dolor Sit Amet"
+app.allowed_token = "c10b55dfdeddfc4718d210214d13277ed4555ce77857e688eeaa49412074c3b8"
+
+templates = Jinja2Templates(directory="templates")
 
 patients = {}
 
@@ -31,10 +35,7 @@ security = HTTPBasic()
 
 @app.post("/logout")
 def logout(*, session_token: str = Cookie(None)):
-    if (
-        session_token
-        != "c10b55dfdeddfc4718d210214d13277ed4555ce77857e688eeaa49412074c3b8"
-    ):
+    if session_token != app.allowed_token:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
     response = RedirectResponse("/", 302)
     response.delete_cookie(key="session_token")
@@ -62,9 +63,17 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
 
 
 @app.get("/")
-@app.get("/welcome")
 def hello_world():
     return {"message": "Hello World during the coronavirus pandemic!"}
+
+
+@app.get("/welcome")
+def welcome(*, session_token: str = Cookie(None), request: Request):
+    if session_token != app.allowed_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    return templates.TemplateResponse(
+        "welcome.html", {"request": request, "user": "trudnY"}
+    )
 
 
 @app.get("/method")
