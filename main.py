@@ -1,7 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 
+from hashlib import sha256
+import secrets
+
 app = FastAPI()
+app.secret_key = "Lorem Ipsum Dolor Sit Amet"
 
 patients = {}
 
@@ -18,6 +24,29 @@ class PatientName(BaseModel):
 class PatientResp(BaseModel):
     id: int
     patient: PatientName
+
+
+security = HTTPBasic()
+
+
+@app.post("/login")
+def login(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "trudnY")
+    correct_password = secrets.compare_digest(credentials.password, "PaC13Nt")
+
+    if not correct_username or not correct_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    session_token = sha256(
+        bytes(f"{credentials.username}{credentials.password}{app.secret_key}", "utf8")
+    ).hexdigest()
+    response: RedirectResponse = RedirectResponse("/welcome", 302)
+    response.set_cookie(key="session_token", value=session_token)
+    return response
 
 
 @app.get("/")
