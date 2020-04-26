@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi import FastAPI, HTTPException, status, Depends, Cookie
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -27,6 +27,18 @@ class PatientResp(BaseModel):
 
 
 security = HTTPBasic()
+
+
+@app.post("/logout")
+def logout(*, session_token: str = Cookie(None)):
+    if (
+        session_token
+        != "c10b55dfdeddfc4718d210214d13277ed4555ce77857e688eeaa49412074c3b8"
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    response = RedirectResponse("/", 302)
+    response.delete_cookie(key="session_token")
+    return response
 
 
 @app.post("/login")
