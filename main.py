@@ -36,7 +36,7 @@ security = HTTPBasic()
 @app.post("/logout")
 def logout(*, session_token: str = Cookie(None)):
     if session_token != app.allowed_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     response = RedirectResponse("/", 302)
     response.delete_cookie(key="session_token")
     return response
@@ -70,7 +70,7 @@ def hello_world():
 @app.get("/welcome")
 def welcome(*, session_token: str = Cookie(None), request: Request):
     if session_token != app.allowed_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return templates.TemplateResponse(
         "welcome.html", {"request": request, "user": "trudnY"}
     )
