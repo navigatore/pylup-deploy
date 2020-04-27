@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status, Depends, Cookie, Request
+from fastapi import FastAPI, HTTPException, status, Depends, Cookie, Request, Response
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -8,12 +8,15 @@ from hashlib import sha256
 import secrets
 
 app = FastAPI()
-app.secret_key = "Lorem Ipsum Dolor Sit Amet"
-app.allowed_token = "c10b55dfdeddfc4718d210214d13277ed4555ce77857e688eeaa49412074c3b8"
+app.mydata = {}
+app.mydata["secret_key"] = "Lorem Ipsum Dolor Sit Amet"
+app.mydata[
+    "allowed_token"
+] = "c10b55dfdeddfc4718d210214d13277ed4555ce77857e688eeaa49412074c3b8"
+app.mydata["patients"] = {}
 
 templates = Jinja2Templates(directory="templates")
-
-patients = {}
+security = HTTPBasic()
 
 
 class MethodResp(BaseModel):
@@ -22,7 +25,7 @@ class MethodResp(BaseModel):
 
 class PatientName(BaseModel):
     name: str
-    surename: str
+    surname: str
 
 
 class PatientResp(BaseModel):
@@ -30,13 +33,14 @@ class PatientResp(BaseModel):
     patient: PatientName
 
 
-security = HTTPBasic()
+def checkAuthorization(session_token: str):
+    if session_token != app.mydata["allowed_token"]:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
 @app.post("/logout")
 def logout(*, session_token: str = Cookie(None)):
-    if session_token != app.allowed_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    checkAuthorization(session_token)
     response = RedirectResponse("/", 302)
     response.delete_cookie(key="session_token")
     return response
@@ -69,8 +73,7 @@ def hello_world():
 
 @app.get("/welcome")
 def welcome(*, session_token: str = Cookie(None), request: Request):
-    if session_token != app.allowed_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    checkAuthorization(session_token)
     return templates.TemplateResponse(
         "welcome.html", {"request": request, "user": "trudnY"}
     )
@@ -97,14 +100,33 @@ def method_put():
 
 
 @app.post("/patient")
-def patient(patient_name: PatientName):
-    new_id = len(patients)
-    patients[new_id] = patient_name
-    return PatientResp(id=new_id, patient=patient_name)
+def patient(patient_name: PatientName, session_token: str = Cookie(None)):
+    checkAuthorization(session_token)
+    new_id = len(app.mydata["patients"])
+    app.mydata["patients"][new_id] = patient_name
+    response = RedirectResponse(f"patient/{new_id}", status_code=status.HTTP_302_FOUND)
+    return response
+
+
+@app.get("/patient")
+def get_all_patients(session_token: str = Cookie(None)):
+    checkAuthorization(session_token)
+    return app.mydata["patients"]
 
 
 @app.get("/patient/{pk}")
-def get_patient(pk: int):
-    if pk not in patients:
+def get_patient(pk: int, session_token: str = Cookie(None)):
+    checkAuthorization(session_token)
+    if pk not in app.mydata["patients"]:
         raise HTTPException(status_code=204, detail="Nonexisting patient ID")
-    return patients[pk]
+    return app.mydata["patients"][pk]
+
+
+@app.delete("/patient/{pk}")
+def delete_patient(pk: int, response: Response, session_token: str = Cookie(None)):
+    checkAuthorization(session_token)
+    if pk not in app.mydata["patients"]:
+        raise HTTPException(status_code=204, detail="Nonexisting patient ID")
+    del app.mydata["patients"][pk]
+    response.status_code = status.HTTP_200_OK
+    return response
