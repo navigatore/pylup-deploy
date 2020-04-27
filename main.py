@@ -130,8 +130,7 @@ def get_patient(pk: int, session_token: str = Cookie(None)):
 @app.delete("/patient/{pk}")
 def delete_patient(pk: int, response: Response, session_token: str = Cookie(None)):
     checkAuthorization(session_token)
-    if pk not in app.mydata["patients"]:
-        raise HTTPException(status_code=204, detail="Nonexisting patient ID")
-    del app.mydata["patients"][pk]
-    response.status_code = status.HTTP_200_OK
+    if pk in app.mydata["patients"]:
+        del app.mydata["patients"][pk]
+    response.status_code = status.HTTP_204_NO_CONTENT
     return response
