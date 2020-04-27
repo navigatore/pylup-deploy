@@ -111,6 +111,8 @@ def patient(patient_name: PatientName, session_token: str = Cookie(None)):
 @app.get("/patient")
 def get_all_patients(session_token: str = Cookie(None)):
     checkAuthorization(session_token)
+    if not app.mydata["patients"]:
+        raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
     return app.mydata["patients"]
 
 
