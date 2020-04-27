@@ -107,7 +107,7 @@ def patient(patient_name: PatientName, session_token: str = Cookie(None)):
     checkAuthorization(session_token)
     new_id = len(app.mydata["patients"])
     app.mydata["patients"][new_id] = patient_name
-    response = RedirectResponse(f"patient/{new_id}", status_code=status.HTTP_302_FOUND)
+    response = RedirectResponse(f"/patient/{new_id}", status_code=status.HTTP_302_FOUND)
     return response
 
 
