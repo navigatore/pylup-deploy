@@ -59,7 +59,10 @@ def login(credentials: HTTPBasicCredentials = Depends(security)):
         )
 
     session_token = sha256(
-        bytes(f"{credentials.username}{credentials.password}{app.secret_key}", "utf8")
+        bytes(
+            f"{credentials.username}{credentials.password}{app.mydata['secret_key']}",
+            "utf8",
+        )
     ).hexdigest()
     response: RedirectResponse = RedirectResponse("/welcome", 302)
     response.set_cookie(key="session_token", value=session_token)
