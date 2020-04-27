@@ -133,4 +133,5 @@ def delete_patient(pk: int, response: Response, session_token: str = Cookie(None
     if pk in app.mydata["patients"]:
         del app.mydata["patients"][pk]
     response.status_code = status.HTTP_204_NO_CONTENT
+    response.headers["Location"] = f"/patient/{pk}"
     return response
