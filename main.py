@@ -6,6 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from hashlib import sha256
 import secrets
+import sqlite3
 
 app = FastAPI()
 app.mydata = {}
@@ -36,6 +37,24 @@ class PatientResp(BaseModel):
 def checkAuthorization(session_token: str):
     if session_token != app.mydata["allowed_token"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+@app.on_event("startup")
+async def startup():
+    app.db_connection = sqlite3.connect("chinook.db")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    app.db_connection.close()
+
+
+@app.get("/tracks")
+async def tracks(page: int = 0, per_page: int = 10):
+    app.db_connection.row_factory = sqlite3.Row
+    return app.db_connection.execute(
+        "SELECT * FROM tracks LIMIT ? OFFSET ?", (per_page, page * per_page)
+    ).fetchall()
 
 
 @app.post("/logout")
