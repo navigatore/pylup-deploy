@@ -39,6 +39,16 @@ class AlbumInfo(BaseModel):
     artist_id: int
 
 
+class CustomerInfo(BaseModel):
+    company: str = None
+    address: str = None
+    city: str = None
+    state: str = None
+    country: str = None
+    postalcode: str = None
+    fax: str = None
+
+
 def checkAuthorization(session_token: str):
     if session_token != app.mydata["allowed_token"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -101,6 +111,50 @@ async def get_albums(album_id: int):
     app.db_connection.row_factory = sqlite3.Row
     return app.db_connection.execute(
         "SELECT * FROM albums WHERE AlbumId = ?", (album_id,)
+    ).fetchone()
+
+
+@app.put("/customers/{customer_id}")
+async def patch_customer(customer_id: int, info: CustomerInfo):
+    cursor = app.db_connection.cursor()
+    cursor.row_factory = sqlite3.Row
+    customer_data = cursor.execute(
+        "SELECT * FROM customers WHERE CustomerId = ?", (customer_id,)
+    ).fetchone()
+    if not customer_data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "Non-existent customer"},
+        )
+    cd = {key.lower(): customer_data[key] for key in dict(customer_data)}
+    patch_dict = info.dict(exclude_unset=True)
+    cd.update(patch_dict)
+    cursor.execute(
+        """
+        UPDATE customers SET
+        company = ?,
+        address = ?,
+        city = ?,
+        state = ?,
+        country = ?,
+        postalcode = ?,
+        fax = ?
+        WHERE CustomerId = ?
+        """,
+        (
+            cd["company"],
+            cd["address"],
+            cd["city"],
+            cd["state"],
+            cd["country"],
+            cd["postalcode"],
+            cd["fax"],
+            customer_id,
+        ),
+    )
+    app.db_connection.commit()
+    return cursor.execute(
+        "SELECT * FROM customers WHERE CustomerId = ?", (customer_id,)
     ).fetchone()
 
 
