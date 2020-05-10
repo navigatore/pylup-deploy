@@ -57,6 +57,20 @@ async def tracks(page: int = 0, per_page: int = 10):
     ).fetchall()
 
 
+@app.get("/tracks/composers")
+async def composers(composer_name: str):
+    app.db_connection.row_factory = lambda _, row: row[0]
+    response = app.db_connection.execute(
+        "SELECT Name FROM tracks WHERE Composer = ? ORDER BY Name", (composer_name,)
+    ).fetchall()
+    if not response:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "No such composer in the database"},
+        )
+    return response
+
+
 @app.post("/logout")
 def logout(*, session_token: str = Cookie(None)):
     checkAuthorization(session_token)
