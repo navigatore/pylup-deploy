@@ -34,6 +34,11 @@ class PatientResp(BaseModel):
     patient: PatientName
 
 
+class AlbumInfo(BaseModel):
+    title: str
+    artist_id: int
+
+
 def checkAuthorization(session_token: str):
     if session_token != app.mydata["allowed_token"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
@@ -69,6 +74,34 @@ async def composers(composer_name: str):
             detail={"error": "No such composer in the database"},
         )
     return response
+
+
+@app.post("/albums", status_code=201)
+async def albums(albumInfo: AlbumInfo):
+    cursor = app.db_connection.cursor()
+    artistInfo = cursor.execute(
+        "SELECT * FROM artists WHERE ArtistId = ?", (albumInfo.artist_id,)
+    ).fetchall()
+    if not artistInfo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail={"error": "Artist not found"}
+        )
+    cursor.execute(
+        "INSERT INTO albums (Title, ArtistId) VALUES (?, ?)",
+        (albumInfo.title, albumInfo.artist_id),
+    )
+    app.db_connection.commit()
+    cursor.row_factory = sqlite3.Row
+    response = cursor.execute("SELECT * FROM albums ORDER BY AlbumId DESC").fetchone()
+    return response
+
+
+@app.get("/albums/{album_id}")
+async def get_albums(album_id: int):
+    app.db_connection.row_factory = sqlite3.Row
+    return app.db_connection.execute(
+        "SELECT * FROM albums WHERE AlbumId = ?", (album_id,)
+    ).fetchone()
 
 
 @app.post("/logout")
