@@ -39,6 +39,13 @@ class AlbumInfo(BaseModel):
     artist_id: int
 
 
+class CustomerStats(BaseModel):
+    CustomerId: int
+    Email: str = None
+    Phone: str = None
+    Sum: float
+
+
 class CustomerInfo(BaseModel):
     company: str = None
     address: str = None
@@ -156,6 +163,36 @@ async def patch_customer(customer_id: int, info: CustomerInfo):
     return cursor.execute(
         "SELECT * FROM customers WHERE CustomerId = ?", (customer_id,)
     ).fetchone()
+
+
+@app.get("/sales")
+async def stats(category: str):
+    if category != "customers":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "No such statistic available"},
+        )
+    cursor = app.db_connection.cursor()
+    cursor.row_factory = sqlite3.Row
+    stats = cursor.execute(
+        """
+        SELECT customers.CustomerId as cid, Email, Phone, ROUND(SUM(Total), 2) as tsum
+        FROM invoices
+        JOIN customers on invoices.CustomerId = cid
+        GROUP BY cid
+        ORDER BY tsum DESC, cid ASC
+        """
+    )
+    resp = [
+        CustomerStats(
+            CustomerId=row["cid"],
+            Email=row["Email"],
+            Phone=row["Phone"],
+            Sum=row["tsum"],
+        )
+        for row in stats
+    ]
+    return resp
 
 
 @app.post("/logout")
