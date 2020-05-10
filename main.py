@@ -165,13 +165,7 @@ async def patch_customer(customer_id: int, info: CustomerInfo):
     ).fetchone()
 
 
-@app.get("/sales")
-async def stats(category: str):
-    if category != "customers":
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": "No such statistic available"},
-        )
+def customers_stats():
     cursor = app.db_connection.cursor()
     cursor.row_factory = sqlite3.Row
     stats = cursor.execute(
@@ -193,6 +187,33 @@ async def stats(category: str):
         for row in stats
     ]
     return resp
+
+
+def genres_stats():
+    cursor = app.db_connection.cursor()
+    cursor.row_factory = sqlite3.Row
+    stats = cursor.execute(
+        """
+        SELECT genres.Name, COUNT(*) as Sum
+        FROM invoice_items
+        JOIN tracks ON invoice_items.TrackId = tracks.TrackId
+        JOIN genres ON tracks.GenreId = genres.GenreId
+        GROUP BY genres.GenreId
+        ORDER BY Sum DESC, genres.Name ASC
+        """
+    ).fetchall()
+    return stats
+
+
+@app.get("/sales")
+async def stats(category: str):
+    stats_handlers = {"customers": customers_stats, "genres": genres_stats}
+    if category not in stats_handlers:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": "No such statistic available"},
+        )
+    return stats_handlers[category]()
 
 
 @app.post("/logout")
